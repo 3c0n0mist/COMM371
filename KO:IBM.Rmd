@@ -1,0 +1,43 @@
+COEC 371 - portfolio optimisation with KO and IBM
+```{r}
+library(tidyverse)
+library(tidyquant)
+```
+Importing data for KO and IBM
+```{r}
+stock_prices <- c("KO","IBM") %>% tq_get(get = "stock.prices",from = "2010-01-01",to ="2015-12-31")
+stock_prices
+```
+```{r}
+stock_returns <- stock_prices %>% group_by(symbol) %>% tq_transmute(select = adjusted,mutate_fun = periodReturn, period = "monthly", col_rename = "Ra")
+stock_returns
+```
+Sharpe Ratio analysis
+```{r}
+stock_returns %>% tq_performance(Ra=Ra,Rb = NULL,performance_fun = SharpeRatio)
+```
+Portfolio analysis
+```{r}
+wts <- c(0.7,0.3)
+portfolio_returns <- stock_returns %>% tq_portfolio(assets_col =  symbol,returns_col = Ra,weights =  wts,col_rename =  "Ra")
+portfolio_returns
+```
+
+Returns from just owning GOOG
+```{r}
+baseline_returns_monthly <- "GOOG" %>%
+    tq_get(get  = "stock.prices",
+           from = "2010-01-01",
+           to   = "2015-12-31") %>%
+    tq_transmute(select     = adjusted, 
+                 mutate_fun = periodReturn, 
+                 period     = "monthly", 
+                 col_rename = "Rb")
+```
+
+Comparison of the two methods
+```{r}
+single_portfolio <- left_join(portfolio_returns,baseline_returns_monthly, by= "date")
+single_portfolio %>% summary()
+```
+
