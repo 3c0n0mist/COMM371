@@ -2,3 +2,4 @@ This repositry is essentially the application, of the all the material i learn i
 
 If there is anything beyond the scope of the course, i will cite my sources.
 
+Thanks,
