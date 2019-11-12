@@ -1,0 +1,62 @@
+In this file, I am going to attempt to solve:
+
+3.  You consider investing in two stocks, A and B. The expected return on stock A is 11% and the standard deviation is 16%.  The expected return on stock B is 17% and thestandard deviation is 26%.
+  (a)  The correlation between stocks A and B is 0.3.  Compute the expected return andstandard deviation of a portfolio that has 0% A, 10% A, 20% A, etc, until 100%A. Plot the portfolio frontier formed by these portfolios.
+```{r}
+# imported all the libraries
+library(tidyverse)
+library(ggthemes)
+```
+
+stock information
+```{r}
+#expected returns on both stocks
+er_A=0.11
+er_B=0.17
+
+#standard deviation on both stocks
+sd_A=0.16
+sd_B=0.26
+
+#correlation coefficient
+ro = 0.3
+new_ro = 0.8
+
+#create weights
+A_weights <-seq(from =0,to = 1,length.out=10)
+
+#data table with weights
+df_w <- tibble(wA=A_weights,
+             wB=(1-A_weights))
+
+#calculate portfolio returns and s.d.
+df <- df_w %>% mutate(er_P = wA*er_A + wB*er_B,sd_P = sqrt((wA*sd_A)^2 + (wB*sd_B)^2 + 2*ro*wA*wB*sd_A*sd_B))
+df
+
+```
+Plot 1
+```{r}
+#time to plot the data
+ggplot() +
+geom_point(data = df, aes(x = sd_P, y = er_P,)) +
+geom_point(data = tibble(sd = c(sd_A, sd_B), mean = c(er_A, er_B)),
+aes(x = sd, y = mean), color = "red", size = 3, shape = 18)+ggtitle("Portfolio returns",subtitle = "ro = 0.3") +xlab("standard deviation of the portfolio")+ylab("expected return of the portfolio")+scale_y_continuous()+scale_x_continuous()+theme_economist()
+```
+ (b)  Repeat the previous question, assuming that the correlation is 0.8.
+```{r}
+# calculate new portfolio returns and s.d.
+new_df <- df_w %>% mutate(er_P = wA*er_A + wB*er_B,sd_P = sqrt((wA*sd_A)^2 + (wB*sd_B)^2 + 2*new_ro*wA*wB*sd_A*sd_B))
+new_df
+
+```
+Plot2
+```{r}
+#plot 
+ggplot()+geom_point(data = new_df,aes(y=er_P,x=sd_P))+geom_point(data = tibble(sd =c(sd_A,sd_B),mean = c(er_A,er_B)),aes(x=sd,y=mean),color = "red",size=3,shape=18)+ggtitle("Portfolio returns",subtitle = "ro = 0.8")+xlab("standard deviation")+ylab("expected returns")+scale_y_continuous()+scale_x_continuous()+theme_economist()
+```
+(c)  Explain intuitively why the portfolio frontier is different in the two cases.
+since the correlation is high in plot2, both stocks move in the same pattern. Hence not many gains can be achieved through diversification, as a result the minimum variance is achieved by holding A (100%). On the other hand in plot 1, as the corrleation is low, the portoflio with positive weights on A and B can have a lower variance than holding both A and B.
+
+References:
+This work is really similar to what i have done here.
+https://www.r-bloggers.com/a-gentle-introduction-to-finance-using-r-efficient-frontier-and-capm-part-1/
