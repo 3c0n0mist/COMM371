@@ -60,3 +60,47 @@ since the correlation is high in plot2, both stocks move in the same pattern. He
 References:
 This work is really similar to what i have done here.
 https://www.r-bloggers.com/a-gentle-introduction-to-finance-using-r-efficient-frontier-and-capm-part-1/
+
+Checking the portfolio returns of investing in  APPL or BG
+```{r}
+library(quantmod)
+```
+importing the data
+```{r}
+# data
+getSymbols("AAPL")
+getSymbols("BG")
+# summary statistics
+summary(AAPL)
+summary(BG)
+```
+
+```{r}
+# all returns
+dat <- tibble(APPL=yearlyReturn(AAPL),BG=yearlyReturn(BG))
+summary(dat)
+```
+```{r}
+# expected returns
+er_APPL = mean(dat$APPL)
+er_BG = mean(dat$BG)
+
+#standard deviations
+sd_APPL=sd(dat$APPL)
+sd_BG=sd(dat$BG)
+
+#covariance
+cov_p = cov(x=dat$APPL,y=dat$BG)
+
+# making the portflio
+new_dat <- df_w %>% mutate(er_P = wA*er_APPL + wB*er_BG,sd_P = sqrt((wA*sd_APPL)^2 + (wB*sd_BG)^2 + 2*wA*wB*cov_p))
+new_dat
+
+```
+Thats great we got our portfolio of APPL and BG, now lets visulaize it
+```{r}
+# plot
+ggplot()+geom_point(data = new_dat,aes(y=er_P,x=sd_P))+geom_point(data = tibble(sd =c(sd_APPL,sd_BG),mean = c(er_APPL,er_BG)),aes(x=sd,y=mean),color = "red",size=3,shape=18)+ggtitle("Portfolio returns",subtitle = "with APPL and BG")+xlab("standard deviation")+ylab("expected returns")+scale_y_continuous()+scale_x_continuous()+theme_fivethirtyeight()
+```
+This is because the covariance is 0.12, which means the socks are hgihly correlated. Hence this proves that the investor can't do much better buy investing in a combination of APPL and BG.
+
