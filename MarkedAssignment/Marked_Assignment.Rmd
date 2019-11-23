@@ -1,0 +1,185 @@
+# Answer for the Assignment
+## Information regarding the DataSet
+It contains monthly returns for five value-weighted portfolios from October 1969 to September
+2019. The portfolios are formed using all stocks traded at NYSE, NASDAQ, and AMEX.
+A proxy for the level of operating profitability (OP) is computed for each stock. Then, the stocks are sorted according to OP and are split evenly into 5 groups (quintiles).
+
+LO contains the lowest OP quintile stocks whereas portfolio HI contains the highest OP quintile stocks. Portfolios QNT2, QNT3, and QNT4 are formed in the obvious fashion using the remaining stocks. The provided file also contains market returns (MKT)2 and T-bill rates (RF). Note that all returns are expressed in percentage points.
+
+### Code
+```{r}
+# setting working directory
+setwd("~/Documents/Coursework/COEC371/problem_sets/MarkedAssignment")
+# importing libraries
+library(tidyverse)
+library(readxl)
+library(stats)
+library(plotly)
+library(ggthemes)
+```
+Importing data from VW_5_OP_Mkt_Rf_Monthly_196910_201909.xlsx
+```{r}
+data =read_excel('VW_5_OP_Mkt_Rf_Monthly_196910_201909.xlsx')
+# calculating the risk premium
+data <- data %>% mutate(RP = (MKT) - RF)
+summary(data)
+str(data)
+```
+
+#### Part A
+to perform Regression Analysis for all five OP portfolios.
+regress portfolio excess returns on market excess
+returns.
+
+What are the alpha estimates for the 5 OP portfolios and the standard errors of these estimates?
+```{r initial}
+# attempt to regress 
+reg1 = data %>% lm(formula = (LO-RF) ~ RP)
+reg2 = data %>% lm(formula = (QNT2-RF) ~ RP)
+reg3 = data %>% lm(formula = ((QNT3)-RF) ~ RP)
+reg4 = data %>% lm(formula = ((QNT4)-RF) ~ RP)
+reg5 = data %>% lm(formula = ((HI)-RF) ~ RP)
+
+#create a table
+stock <- c('LO','QNT2','QNT3','QNT4','HI')
+betas <- c(reg1$coefficients[2],
+        reg2$coefficients[2],
+        reg3$coefficients[2],
+        reg4$coefficients[2],
+        reg5$coefficients[2])
+alphas <- c(reg1$coefficients[1],
+        reg2$coefficients[1],
+        reg3$coefficients[1],
+        reg4$coefficients[1],
+        reg5$coefficients[1])
+df <- tibble(stock,alphas,betas)
+df
+```
+according betas, LO should have the highest return and QNT3 should have the lowest.
+
+
+#### Which portfolios are fairly priced, overpriced, or underpriced from a CAPM perspective? [Hint: For which portfolios are the alpha estimates statistically significant?]
+
+*just to see how the data distribution looks*
+```{r density plots}
+# density plots
+plot(density(data$LO))
+plot(density(data$QNT2))
+plot(density(data$QNT3))
+plot(density(data$QNT4))
+plot(density(data$HI))
+```
+### Plot SML, as predicted by the CAPM
+```{r part f plot}
+# plot for part f
+plot1 <- data %>% ggplot( aes(y = (LO-RF), x = RP*12))+geom_point(col='yellow4') + xlab('Market Excess Return') + ylab('Portfolio Excess Return') + ggtitle('Does CAPM hold for every portfolio?') + geom_smooth(method='lm')+geom_point(aes(y = (QNT2-RF)),col='yellow3')+geom_point(aes(y=(QNT3-RF)),col='yellow2')+geom_point(aes(y=(QNT4-RF)),col='yellow1')+geom_point(aes(y=(HI-RF)),col='lightyellow')+theme_classic()
+plot1 <- ggplotly(plot1)
+plot1
+```
+On a new graph, plot the *CAPM-predicted risk premium (y-axis) vs. the realized excess return (x-axis) for each portfolio*. Note that (i) the CAPM-predicted risk premium is given by beta times average market excess return and (ii) the realized risk premium is equal to average excess return. Use annualized returns for easier interpre- tation. What should the plot look like if the CAPM holds? What can you say about the validity of the CAPM from this graph? [Hint: plot the 45-degree line on the same graph.]
+```{r part g plot *need to add 45 degree line*}
+CAPM <- data %>% ggplot( aes(y = (reg1$coefficients[2]*mean(RP*12)), x = mean(LO)))+geom_point(col='yellow4')+geom_abline(intercept = 0,slope = 1,color='red',linetype='dashed',size=1.5)+ xlab('Realised Excess Return') + ylab('CAPM - predicted risk premium') + ggtitle('Does CAPM hold for every portfolio?') +geom_point(aes(y = (reg2$coefficients[2]*mean(RP*12)), x = mean(QNT2)),col='yellow3')+geom_point(aes(y = (reg3$coefficients[2]*mean(RP*12)), x = mean(QNT3)),col='yellow2')+geom_point(aes(y = (reg4$coefficients[2]*mean(RP*12)), x = mean(QNT4)),col='yellow1')+geom_point(aes(y = (reg5$coefficients[2]*mean(RP*12)), x = mean(LO)),col='yellow')+geom_abline(intercept = 6, slope = 1)
+CAPM <- ggplotly(CAPM)
+CAPM
+```
+#### PART B
+initial data transformation
+```{r part a}
+# expected values
+E_LO = mean(data$LO)
+E_HI = mean(data$HI)
+
+# risk
+sd_LO = sd(data$LO)
+sd_HI = sd(data$HI)
+
+# correlation
+HILO = cor(data$LO,data$HI)
+
+#table
+answer = tibble(E_LO,E_HI,sd_LO,sd_HI,HILO)
+answer
+```
+```{r part b}
+annualised_er = answer[1:2]*12
+annualised_sd = answer[3:4]*sqrt(12)
+
+annualised_er
+annualised_sd
+#correlation 
+HILO
+```
+```{r Sharpe Ratio}
+# Sharpe ratio calculation
+SharpeRatio_LO = annualised_er/annualised_sd
+SharpeRatio_LO = rename(SharpeRatio_LO, SR_LO = E_LO,SR_HI = E_HI)
+SharpeRatio_LO
+```
+ As can be seen from the output, HI provides higher return for the given risk.
+```{r Portfolio}
+# creating weights
+weights <-seq(from =-1.5,to = 1.5,length.out=30)
+
+# data table with the weights
+df_w <- tibble(wLO = weights, 
+               wHI = (1-weights))
+
+# table with er and sd for the given wieghts 
+B_df <- df_w %>% mutate(er_P = wLO*E_LO*12 + wHI*E_HI*12,sd_P = sqrt((wLO*sd_LO*sqrt(12))^2 + (wHI*sd_HI*sqrt(12))^2 + 2*wLO*wHI*HILO))
+B_df
+
+# top 6 entries maximum Portfolio SD
+head(arrange(B_df,desc(sd_P)))
+
+```
+## COMPLETE PORTFOLIO
+**recheck part d**
+```{r}
+#weights
+cp_weights <-seq(from =0,to = 1,length.out=30)
+
+# data table with weights
+df_cp <- tibble(wRF = cp_weights, 
+               wP = (1-cp_weights))
+# table with cp
+cp_df <- B_df %>% mutate(er_CP = df_cp$wRF*0.03 + df_cp$wP*er_P,sd_CP = (df_cp$wP*sd_P))
+cp_df
+
+# plot
+fml <- ggplot()+geom_point(data = B_df,aes(y=er_P,x=sd_P))+geom_point(data = tibble(sd =c(sd_LO*sqrt(12),sd_HI*sqrt(12)),mean = c(E_LO*12,E_HI*12)),aes(x=sd,y=mean),color = "red",size=3,shape=18)+ggtitle("Portfolio returns",subtitle = "with LO and HI")+xlab("standard deviation")+ylab("expected returns")+scale_y_continuous()+scale_x_continuous()+geom_hline(yintercept = 3)+ylim(0,15)+geom_line(data = cp_df,aes(y=er_CP,x=sd_CP),color = 'red')
+fml <- ggplotly(fml)
+fml
+```
+### tangent portfolio weights
+```{r}
+numerator = ((mean(E_LO*12)-3)*sd_HI -(mean(E_HI*12)-3))*HILO
+denominator = (mean(E_LO*12)-3)*sd_HI +(mean(E_HI*12)-0.03)*sd_LO-(mean(E_HI*12)-3+mean(E_LO*12)-3)*HILO
+cw_LO = numerator/denominator
+cw_LO
+cw_HI = 1-cw_LO
+# lets compute the er and sd
+er_cp = cw_LO*E_LO*12 + cw_HI*E_HI*12
+sd_cp = sqrt((cw_LO*sd_LO*sqrt(12))^2 + (cw_HI*sd_HI*sqrt(12))^2 + 2*cw_LO*cw_HI*HILO)
+# sharpe ratio
+sharpe_cp = (er_cp - 3)/sd_cp
+#output
+er_cp
+sd_cp
+sharpe_cp
+```
+now that we have formed *the tangent line*, and figured out the tangent portfolio. now we will try to find the complete portfolio, with 12% expected return
+```{r last part}
+# expected returns and the sd for the tangent portfolio
+e_tp = df_cp$wP*er_cp + df_cp$wRF*3
+sd_tp = df_cp$wP*sd_cp
+final_df = tibble(e_tp,sd_tp)
+max(final_df$e_tp)
+```
+**doubt** 
+dont know how to exactly get the last answer, according to my tangent portfolio return, my max is 11.76764, hence getting 12 is impossible, close to 12, which is 11.76764 i am getting 0% weight on the rf asset, hence providing me with the tangent portfolio with no shorting capabiities.
+Plot below
+```{r plotly plot}
+test <- ggplot()+geom_point(data = B_df,aes(y=er_P,x=sd_P))+geom_point(data = tibble(sd =c(sd_LO*sqrt(12),sd_HI*sqrt(12)),mean = c(E_LO*12,E_HI*12)),aes(x=sd,y=mean),color = "red",size=3,shape=18)+ggtitle("Portfolio returns",subtitle = "with LO and HI")+xlab("standard deviation")+ylab("expected returns")+scale_y_continuous()+scale_x_continuous()+geom_hline(yintercept = 3)+geom_line(data = final_df,aes(y=e_tp,x=sd_tp),color='blue')
+test <- ggplotly(test)
+test
+```
